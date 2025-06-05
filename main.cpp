@@ -78,7 +78,7 @@ long get_peak_memory_usage_kb()
 #endif
 }
 
-int main() // 逻辑保护仿真
+int main_protection() // 逻辑保护仿真
 {
     initialize_loggers("保护逻辑仿真.txt", true);
 
@@ -145,7 +145,7 @@ int main_avc() // AVC简化仿真
 }
 
 extern void test_vpp();
-int main_vpp() // 虚拟电厂频率响应仿真
+int main() // 虚拟电厂频率响应仿真
 {
     // --- 初始化日志系统 ---
     // 日志文件名设为 "虚拟电厂频率响应数据.csv"，并在每次运行时覆盖旧文件 (truncate_data_log = true)。

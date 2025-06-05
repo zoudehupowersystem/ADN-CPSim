@@ -1,3 +1,4 @@
+// vpp_system.cpp
 #include "cps_coro_lib.h" // 核心协程库
 #include "ecs_core.h" // 实体组件系统核心
 #include "frequency_system.h" // 频率响应仿真模块
@@ -100,6 +101,7 @@ void test_vpp()
         g_console_logger->info("仿真初始时间已设置为: {} 毫秒。", g_scheduler->now().time_since_epoch().count());
 
     // --- 初始化继电保护系统模块 ---
+    /*
     ProtectionSystem protection_system(registry, scheduler_instance); // 创建保护系统实例，传入注册表和调度器
 
     // 创建被保护设备实体，并为其添加保护组件
@@ -124,9 +126,9 @@ void test_vpp()
     breaker_l1p_task.detach();
     auto breaker_t1p_task = circuitBreakerAgentTask_prot(transformer1_prot, "变压器1_保护设备", scheduler_instance);
     breaker_t1p_task.detach();
-
     if (g_console_logger)
         g_console_logger->info("继电保护系统相关任务已启动。");
+    */
 
     // --- 初始化频率响应系统模块 (VPP) ---
     std::vector<Entity> ev_pile_entities_freq; // 存储所有EV充电桩实体的ID
@@ -135,8 +137,8 @@ void test_vpp()
     std::mt19937 rng_freq(rd_freq()); // Mersenne Twister 随机数引擎
     std::uniform_real_distribution<double> soc_dist_freq(0.25, 0.90); // SOC在25%到90%之间均匀分布
 
-    int num_ev_stations = 10; // 模拟的EV充电站数量
-    int piles_per_station = 5; // 每个充电站的充电桩数量
+    int num_ev_stations = 44; // 模拟的EV充电站数量
+    int piles_per_station = 10; // 每个充电站的充电桩数量
     int total_ev_piles = num_ev_stations * piles_per_station; // 总EV充电桩数量
 
     // 创建并配置EV充电桩实体
@@ -170,15 +172,11 @@ void test_vpp()
         g_console_logger->info("已初始化 {} 个电动汽车充电桩用于频率响应仿真。", total_ev_piles);
 
     // 创建并配置ESS单元实体
-    int num_ess_units = 100; // 模拟的ESS单元数量
+    int num_ess_units = 60; // 模拟的ESS单元数量
     for (int i = 0; i < num_ess_units; ++i) {
         Entity ess = registry.create();
         ess_unit_entities_freq.push_back(ess);
-        // 示例：ESS的增益设置，使其在频率偏差0.03Hz时能提供1000kW的响应
-        double ess_gain_kw_per_hz = (1000.0) / (0.03 * 1.0); // 假设df=0.03Hz时，P_adj=1000kW，则K=P_adj/df (这里的系数50可能是额定频率，需要确认模型)
-                                                             // 简化：若df=0.03Hz对应1000kW，则K = 1000/0.03
-        ess_gain_kw_per_hz = 1000.0 / 0.03; // 修正增益计算
-
+        double ess_gain_kw_per_hz = 1000.0 / 0.03;
         registry.emplace<FrequencyControlConfigComponent>(ess,
             FrequencyControlConfigComponent::DeviceType::ESS_UNIT, // 类型
             0.0, // 基准功率 (假设平时待机)
@@ -189,24 +187,40 @@ void test_vpp()
             0.05, // SOC最小阈值 (5%)
             0.95 // SOC最大阈值 (95%)
         );
-        registry.emplace<PhysicalStateComponent>(ess, 0.0, 0.7); // 初始功率0, 初始SOC 70%
+        registry.emplace<PhysicalStateComponent>(ess, 0.0, 0.7);
     }
     if (g_console_logger)
         g_console_logger->info("已初始化 {} 个储能单元 (ESS) 用于频率响应仿真。", num_ess_units);
 
-    // 启动频率响应系统的核心任务 (频率预言机、EV VPP控制器、ESS VPP控制器)
-    double freq_sim_step_ms = 20.0; // 频率预言机的更新步长设为20毫秒
+    // --- 启动频率响应系统的核心任务 ---
+    double freq_sim_step_ms = 20.0;
+    // 频率预言机仍然是单个任务，负责发布频率事件
     auto freq_oracle_task_main = frequencyOracleTask(registry, ev_pile_entities_freq, ess_unit_entities_freq, 5.0, freq_sim_step_ms);
-    // 参数：registry, ev实体, ess实体, 扰动开始时间(仿真5秒时), 频率更新步长(ms)
     freq_oracle_task_main.detach();
-
-    auto ev_vpp_task_main = vppFrequencyResponseTask(registry, "电动汽车VPP", ev_pile_entities_freq, freq_sim_step_ms);
-    ev_vpp_task_main.detach();
-    auto ess_vpp_task_main = vppFrequencyResponseTask(registry, "储能系统VPP", ess_unit_entities_freq, freq_sim_step_ms);
-    ess_vpp_task_main.detach();
-
     if (g_console_logger)
-        g_console_logger->info("频率-有功功率响应系统 (VPP) 相关任务已启动。");
+        g_console_logger->info("频率预言机任务已启动。");
+
+    // 为每个EV充电桩启动一个独立的频率响应协程
+    int ev_task_count = 0;
+    for (Entity ev_entity : ev_pile_entities_freq) {
+        std::ostringstream ev_name_stream;
+        ev_name_stream << "EV桩_" << ev_task_count++; // 为日志生成唯一名称
+        auto individual_ev_task = individualDeviceFrequencyResponseTask(registry, ev_entity, ev_name_stream.str());
+        individual_ev_task.detach(); // 分离任务，使其在调度器中独立运行
+    }
+    if (g_console_logger)
+        g_console_logger->info("已为 {} 个EV充电桩分别启动独立的频率响应协程任务。", ev_task_count);
+
+    // 为每个ESS单元启动一个独立的频率响应协程
+    int ess_task_count = 0;
+    for (Entity ess_entity : ess_unit_entities_freq) {
+        std::ostringstream ess_name_stream;
+        ess_name_stream << "ESS单元_" << ess_task_count++; // 为日志生成唯一名称
+        auto individual_ess_task = individualDeviceFrequencyResponseTask(registry, ess_entity, ess_name_stream.str());
+        individual_ess_task.detach(); // 分离任务
+    }
+    if (g_console_logger)
+        g_console_logger->info("已为 {} 个ESS单元分别启动独立的频率响应协程任务。", ess_task_count);
 
     // --- 启动通用后台任务 (发电机、负荷) ---
     auto gen_task_main = generatorTask();
@@ -248,5 +262,5 @@ void test_vpp()
     }
 
     if (g_console_logger)
-        g_console_logger->info("VPP频率响应仿真数据已保存至配置文件中指定的路径 ({}).", "虚拟电厂频率响应数据.csv");
+        g_console_logger->info("VPP频率响应仿真数据已保存至: {}", "虚拟电厂频率响应数据_HECS_细粒度.txt");
 }

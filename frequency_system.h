@@ -67,26 +67,27 @@ double calculate_frequency_deviation(double t_relative);
 // ess_entities: 包含所有储能单元实体的向量。
 // disturbance_start_time_s: 系统发生频率扰动 (例如，发电机跳闸或负荷突变) 的仿真开始时间 (秒)。
 // simulation_step_ms: 频率预言机更新和发布频率事件的时间步长 (毫秒)。
-// (移除了 std::ofstream& data_logger 参数，日志功能由全局日志系统处理)
 cps_coro::Task frequencyOracleTask(Registry& registry,
     const std::vector<Entity>& ev_entities,
     const std::vector<Entity>& ess_entities,
     double disturbance_start_time_s,
     double simulation_step_ms);
 
+// 【旧的VPP任务声明，将被新的 individualDeviceFrequencyResponseTask 替代，此处保留或删除均可】
 // 协程任务：虚拟电厂 (VPP) 频率响应任务
-// 此协程模拟一个虚拟电厂 (VPP) 中聚合的资源 (如EV充电桩、ESS) 如何响应频率变化。
-// 它会等待 `FREQUENCY_UPDATE_EVENT` 事件，获取当前的频率偏差信息。
-// 然后，根据每个被管理设备的 `FrequencyControlConfigComponent` 和 `PhysicalStateComponent`，
-// 计算并更新这些设备的功率输出 (或消耗)，以参与一次频率调节。
-// registry: ECS注册表的引用，用于访问和修改被管理实体的组件数据。
-// vpp_name: 此VPP实例的名称 (字符串，主要用于日志记录和区分不同的VPP)。
-// managed_entities: 一个包含此VPP实例所管理的所有设备实体ID的向量。
-// simulation_step_ms_parameter: (此参数在当前事件驱动的更新逻辑中可能不直接用于SOC的dt计算，
-//                                因为SOC更新是基于事件之间的时间差。但它可能用于其他配置或作为备用)。
-cps_coro::Task vppFrequencyResponseTask(Registry& registry,
-    const std::string& vpp_name,
-    const std::vector<Entity>& managed_entities,
-    double simulation_step_ms_parameter);
+// cps_coro::Task vppFrequencyResponseTask(Registry& registry,
+//     const std::string& vpp_name,
+//     const std::vector<Entity>& managed_entities,
+//     double simulation_step_ms_parameter);
+
+// 协程任务：单个设备频率响应任务 (VPP中的独立设备)
+// 此协程模拟VPP中单个设备 (如EV充电桩、ESS) 如何响应频率变化。
+// 它会等待 FREQUENCY_UPDATE_EVENT 事件，获取当前的频率偏差信息。
+// 然后，根据此设备的 FrequencyControlConfigComponent 和 PhysicalStateComponent，
+// 计算并更新其功率输出 (或消耗)，以参与一次频率调节。
+// registry: ECS注册表的引用，用于访问和修改此设备实体的组件数据。
+// device_entity: 此协程管理的设备实体ID。
+// device_log_name: 用于日志记录的设备名称或标识 (例如 "EV桩_1", "ESS单元_0")。
+cps_coro::Task individualDeviceFrequencyResponseTask(Registry& registry, Entity device_entity, const std::string& device_log_name);
 
 #endif // FREQUENCY_SYSTEM_H
