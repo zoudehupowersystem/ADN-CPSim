@@ -75,8 +75,8 @@ public:
         if (comp_map_it == components_.end()) {
             if (g_console_logger)
                 g_console_logger->trace("[Registry::get] Component type map not found.");
-            else
-                std::printf("[Registry::get] Component type map not found.\n");
+            // else
+            // std::printf("[Registry::get] Component type map not found.\n");
             return nullptr;
         }
 
@@ -84,16 +84,16 @@ public:
         if (entity_map_it == comp_map_it->second.end()) {
             if (g_console_logger)
                 g_console_logger->trace("[Registry::get] Entity not found in component map.");
-            else
-                std::printf("[Registry::get] Entity not found in component map.\n");
+            // else
+            // std::printf("[Registry::get] Entity not found in component map.\n");
             return nullptr;
         }
 
         Comp* component_ptr = static_cast<Comp*>(entity_map_it->second.get());
         if (g_console_logger)
             g_console_logger->trace("[Registry::get] Component found: %p", (void*)component_ptr);
-        else
-            std::printf("[Registry::get] Component found: %p\n", (void*)component_ptr);
+        // else
+        // std::printf("[Registry::get] Component found: %p\n", (void*)component_ptr);
 
         return component_ptr;
     }

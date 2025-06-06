@@ -6,8 +6,8 @@
 #include <iostream> // 用于在日志初始化本身失败时，通过 std::cerr 输出错误信息
 
 // 定义全局日志记录器实例 (在 .h 文件中声明为 extern，此处是其实际定义)
-std::shared_ptr<spdlog::logger> g_console_logger;
-std::shared_ptr<spdlog::logger> g_data_file_logger;
+std::shared_ptr<spdlog::logger> g_console_logger { nullptr };
+std::shared_ptr<spdlog::logger> g_data_file_logger { nullptr };
 
 // initialize_loggers 函数实现
 void initialize_loggers(const std::string& data_log_filename, bool truncate_data_log)
