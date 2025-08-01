@@ -1,4 +1,4 @@
-// test_model.cpp
+// avc_simulation.cpp
 //  包含自动电压控制 (AVC) 相关的复杂仿真场景定义与测试函数。
 //  这个文件演示了如何使用协程库构建一个包含传感器、控制器和监测器的多智能体仿真。
 #include "cps_coro_lib.h" // 核心协程库

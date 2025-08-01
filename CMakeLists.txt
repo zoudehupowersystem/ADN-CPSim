@@ -20,6 +20,7 @@ add_executable(hecs_coro_simulation
     logic_protection_system.cpp
     logging_utils.cpp
     vpp_system.cpp
+    PowerSystemTopology.cpp 
 )
 
 # HECS + 协程版本的特定编译器标志

@@ -80,47 +80,25 @@ long get_peak_memory_usage_kb()
 
 int main_protection() // 逻辑保护仿真
 {
-    initialize_loggers("保护逻辑仿真.txt", true);
+    std::cout << "--- 主动配电网CPS统一行为建模与高效仿真平台 ---\n";
+    std::cout << "--- 场景: 保护与网络重构协同仿真 ---\n\n";
 
     // --- 创建调度器和ECS注册表实例 ---
-    cps_coro::Scheduler scheduler_instance; // 创建标准事件调度器
-    g_scheduler = &scheduler_instance; // 初始化全局调度器指针，使其指向此实例
-    Registry registry; // 创建ECS注册表实例
+    cps_coro::Scheduler scheduler;
+    Registry registry;
 
-    if (g_console_logger)
-        g_console_logger->info("--- 主动配电网CPS统一行为建模与高效仿真平台 ---");
+    // --- 初始化仿真系统 ---
+    LogicProtectionSystem protection_sim(registry, scheduler);
+    protection_sim.initialize_scenario_entities();
 
-    if (g_console_logger) {
-        g_console_logger->info("--- Setting up Logic Protection Simulation Scenario ---");
-    }
+    // --- 启动主仿真场景协程 ---
+    protection_sim.simulate_fault_and_reconfiguration_scenario().detach();
 
-    // LogicProtectionSystem 在栈上创建，生命周期覆盖 run_until
-    LogicProtectionSystem logic_prot_sim(registry, scheduler_instance);
-    logic_prot_sim.initialize_scenario_entities();
+    // --- 运行仿真 ---
+    // 运行5秒仿真时间
+    scheduler.run_until(scheduler.now() + std::chrono::seconds(20));
 
-    // 启动主场景任务
-    cps_coro::Task protection_scenario_task = logic_prot_sim.simulate_permanent_fault_with_breaker_failure_scenario();
-    protection_scenario_task.detach(); // 协程任务的生命周期由调度器管理
-
-    if (g_console_logger) {
-        g_console_logger->info("Logic Protection Simulation Scenario master task started.");
-    }
-
-    // 设定总仿真时长
-    cps_coro::Scheduler::duration simulation_duration = std::chrono::milliseconds(5000);
-    cps_coro::Scheduler::time_point end_time = scheduler_instance.now() + simulation_duration;
-
-    if (g_console_logger)
-        g_console_logger->info("\n--- 即将开始运行主仿真循环，直至仿真时间到达 {} 毫秒 --- \n", end_time.time_since_epoch().count());
-
-    // 执行仿真循环
-    scheduler_instance.run_until(end_time);
-
-    if (g_console_logger)
-        g_console_logger->info("--- 仿真循环结束 ---");
-
-    // 确保所有日志都已刷出
-    shutdown_loggers();
+    std::cout << "\n--- 仿真循环结束 ---\n";
 
     return 0;
 }
@@ -147,6 +125,9 @@ int main_avc() // AVC简化仿真
 extern void test_vpp();
 int main() // 虚拟电厂频率响应仿真
 {
+    main_protection(); // 逻辑保护仿真
+    return 0;
+
     // --- 初始化日志系统 ---
     // 日志文件名设为 "虚拟电厂频率响应数据.csv"，并在每次运行时覆盖旧文件 (truncate_data_log = true)。
     initialize_loggers("虚拟电厂频率响应数据.txt", true);

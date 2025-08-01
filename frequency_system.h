@@ -8,9 +8,9 @@
 #include "cps_coro_lib.h" // 协程库，用于定义异步任务 (cps_coro::Task)
 #include "ecs_core.h" // ECS核心库，用于定义和管理组件 (IComponent) 和实体 (Entity)
 #include "simulation_events_and_data.h" // 包含仿真中共享的事件ID和数据结构定义
-#include <cmath> // 标准数学函数库，例如 std::sin, std::cos, std::exp, std::abs
-#include <string> // C++标准字符串类型
-#include <vector> // C++标准动态数组 (向量)
+#include <cmath>
+#include <string>
+#include <vector>
 // #include <fstream> // 不再需要 ofstream，因为日志记录已由 spdlog 或其他日志库处理
 
 // 组件 (Component): 物理状态组件

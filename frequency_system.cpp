@@ -1,7 +1,6 @@
 // frequency_system.cpp
 // 实现了与频率响应相关的组件构造函数和协程任务逻辑。
-// frequency_system.cpp
-// 实现了与频率响应相关的组件构造函数和协程任务逻辑。
+
 #include "frequency_system.h"
 #include "logging_utils.h" // 引入日志工具，用于 g_console_logger, g_data_file_logger
 #include <chrono> // C++时间库，用于获取仿真时间

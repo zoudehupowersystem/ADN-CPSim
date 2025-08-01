@@ -24,11 +24,13 @@ constexpr cps_coro::EventId POWER_ADJUST_REQUEST_EVENT = 9; // 请求调整发�
 constexpr cps_coro::EventId FAULT_INFO_EVENT_PROT = 100; // 故障信息事件 (用于向保护系统通报新发生的故障详情)
 constexpr cps_coro::EventId ENTITY_TRIP_EVENT_PROT = 101; // 设备跳闸指令事件 (由保护系统发出，指令特定设备跳闸)
 
-// --- 逻辑保护仿真专用事件ID （这是相对复杂的保护仿真）---
-// 这些ID用于在逻辑保护仿真模块内部或相关模块间传递特定事件。
-constexpr cps_coro::EventId LOGIC_FAULT_EVENT = 300; // 逻辑故障发生事件
-constexpr cps_coro::EventId LOGIC_BREAKER_TRIP_COMMAND_EVENT = 301; // 逻辑断路器跳闸命令事件
-constexpr cps_coro::EventId LOGIC_BREAKER_STATUS_CHANGED_EVENT = 302; // 逻辑断路器状态变更事件 (例如: 打开/关闭)
+// 使用枚举类定义事件ID，确保类型安全
+enum class EventID : uint64_t {
+    LOGIC_FAULT_EVENT = 3001, // 逻辑故障事件
+    LOGIC_BREAKER_COMMAND_EVENT = 3002, // 逻辑断路器命令事件
+    LOGIC_BREAKER_STATUS_CHANGED_EVENT = 3003, // 逻辑断路器状态改变事件
+    LOGIC_SUPPLY_LOSS_EVENT = 3004 // 逻辑母线失电事件
+};
 
 // --- 频率-有功响应系统专用事件ID ---
 // 这些事件ID专用于频率和有功功率响应仿真模块。
@@ -93,6 +95,40 @@ inline void log_lp_info(cps_coro::Scheduler& scheduler, const char* user_format_
         snprintf(buffer, sizeof(buffer), user_format_str, std::forward<Args>(args)...);
         std::cout << buffer << std::endl;
     }
+}
+
+// --- 逻辑保护与重构场景的数据结构 ---
+
+// 故障信息
+struct LogicFaultInfo {
+    Entity faulted_line_entity;
+};
+
+// 断路器命令
+struct LogicBreakerCommand {
+    enum class CommandType { OPEN,
+        CLOSE };
+    Entity breaker_entity;
+    CommandType command;
+};
+
+// 断路器状态
+struct LogicBreakerStatus {
+    Entity breaker_entity;
+    bool is_open;
+};
+
+// 母线失电信息
+struct LogicSupplyLossInfo {
+    Entity bus_entity;
+};
+
+// --- 便捷的事件ID转换函数 ---
+// 允许在需要 uint64_t 的地方直接使用 EventID 枚举值，解决了 "to_underlying was not declared" 的问题。
+template <typename E>
+constexpr auto to_underlying(E e) noexcept
+{
+    return static_cast<std::underlying_type_t<E>>(e);
 }
 
 #endif // SIMULATION_EVENTS_AND_DATA_H
